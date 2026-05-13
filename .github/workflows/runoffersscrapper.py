@@ -1,0 +1,76 @@
+name: Flipkart Offers Scraper
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape-flipkart:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Setup SSH key for private repo access
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+    
+    - name: Configure Git to use SSH
+      run: |
+        git config --global url."git@github.com:".insteadOf "https://github.com/"
+    
+    - name: Checkout private repository
+      uses: actions/checkout@v4
+      with:
+        repository: your-username/Flipkart_Offers_pvt  # Change this to your repo path
+        ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        path: flipkart-scraper
+    
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install Chrome browser
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+        sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
+        rm google-chrome-stable_current_amd64.deb
+        google-chrome --version
+    
+    - name: Install Python dependencies
+      working-directory: ./flipkart-scraper
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Create service account file
+      working-directory: ./flipkart-scraper
+      run: |
+        echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > cosmic-sensor-456609-s3-01180039d70d.json
+    
+    - name: Run scraper with debug
+      working-directory: ./flipkart-scraper
+      env:
+        FLIPKART_EMAIL: ${{ secrets.FLIPKART_EMAIL }}
+        FLIPKART_PASSWORD: ${{ secrets.FLIPKART_PASSWORD }}
+        GMAIL_EMAIL: ${{ secrets.GMAIL_EMAIL }}
+        GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+        GMAIL_TOTP_SECRET: ${{ secrets.GMAIL_TOTP_SECRET }}
+        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+        DEBUG_MODE: "true"
+      run: |
+        python flipkart_scraper.py
+    
+    - name: Upload screenshots and logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-screenshots
+        path: |
+          flipkart-scraper/screenshots/
+          flipkart-scraper/*.log
+          flipkart-scraper/*.txt
+        retention-days: 7
