@@ -96,7 +96,7 @@ jobs:
         DEBUG_MODE: "true"
 
       run: |
-        python flipkart_allinfirstlogic.py
+        python Flipkart_Offers_Scan_Only.py
 
     # ─────────────────────────────────────────────────────────────
     # 9. Upload screenshots / logs for debugging
